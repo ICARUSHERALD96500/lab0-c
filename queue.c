@@ -124,7 +124,7 @@ bool q_delete_mid(struct list_head *head)
         return false;
     int count = q_size(head) / 2;
     struct list_head *temp = head->next;
-    for (int i = 0; i <= count; i++) {
+    while (count--) {
         temp = temp->next;
     }
     list_del(temp);
