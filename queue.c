@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "queue.h"
-
+static inline int q_de_a_scend(struct list_head *head, bool descend);
 /* Notice: sometimes, Cppcheck would find the potential NULL pointer bugs,
  * but some of them cannot occur. You can suppress them by adding the
  * following line.
@@ -286,54 +286,57 @@ void q_sort(struct list_head *head, bool descend)
  * the right side of it */
 int q_ascend(struct list_head *head)
 {
-    if (!head || list_empty(head))
-        return 0;
-    if (list_is_singular(head))
-        return 1;
+    // if (!head || list_empty(head))
+    //     return 0;
+    // if (list_is_singular(head))
+    //     return 1;
 
-    struct list_head *cur, *min;
-    min = head->prev;
-    cur = min->prev;
-    while (cur != head) {
-        if (strcmp(list_entry(min, element_t, list)->value,
-                   list_entry(cur, element_t, list)->value) < 0) {
-            list_del(cur);
-            q_release_element(list_entry(cur, element_t, list));
-            cur = min->prev;
+    // struct list_head *cur, *min;
+    // min = head->prev;
+    // cur = min->prev;
+    // while (cur != head) {
+    //     if (strcmp(list_entry(min, element_t, list)->value,
+    //                list_entry(cur, element_t, list)->value) < 0) {
+    //         list_del(cur);
+    //         q_release_element(list_entry(cur, element_t, list));
+    //         cur = min->prev;
 
-        } else if (strcmp(list_entry(min, element_t, list)->value,
-                          list_entry(cur, element_t, list)->value) >= 0) {
-            min = cur;
-            cur = cur->prev;
-        }
-    }
-    return q_size(head);
+    //     } else if (strcmp(list_entry(min, element_t, list)->value,
+    //                       list_entry(cur, element_t, list)->value) >= 0) {
+    //         min = cur;
+    //         cur = cur->prev;
+    //     }
+    // }
+    // return q_size(head);
+    return q_de_a_scend(head, false);
 }
 
 /* Remove every node which has a node with a strictly greater value anywhere to
  * the right side of it */
 int q_descend(struct list_head *head)
 {
-    if (!head || list_empty(head))
-        return 0;
-    if (list_is_singular(head))
-        return 1;
-    struct list_head *cur, *big;
-    big = head->prev;
-    cur = big->prev;
-    while (cur != head) {
-        if (strcmp(list_entry(big, element_t, list)->value,
-                   list_entry(cur, element_t, list)->value) > 0) {
-            list_del(cur);
-            q_release_element(list_entry(cur, element_t, list));
-            cur = big->prev;
-        } else if (strcmp(list_entry(big, element_t, list)->value,
-                          list_entry(cur, element_t, list)->value) <= 0) {
-            big = cur;
-            cur = cur->prev;
-        }
-    }
-    return q_size(head);
+    // if (!head || list_empty(head))
+    //     return 0;
+    // if (list_is_singular(head))
+    //     return 1;
+    // struct list_head *cur, *big;
+    // big = head->prev;
+    // cur = big->prev;
+    // while (cur != head) {
+    //     if (strcmp(list_entry(big, element_t, list)->value,
+    //                list_entry(cur, element_t, list)->value) > 0) {
+    //         list_del(cur);
+    //         q_release_element(list_entry(cur, element_t, list));
+    //         cur = big->prev;
+    //     } else if (strcmp(list_entry(big, element_t, list)->value,
+    //                       list_entry(cur, element_t, list)->value) <= 0) {
+    //         big = cur;
+    //         cur = cur->prev;
+    //     }
+    // }
+    // return q_size(head);
+    return q_de_a_scend(head, true);
+
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
@@ -341,4 +344,27 @@ int q_descend(struct list_head *head)
 int q_merge(struct list_head *head, bool descend)
 {
     return 0;
+}
+static inline int q_de_a_scend(struct list_head *head, bool descend)
+{
+    if (!head || list_empty(head))
+        return 0;
+
+    int cnt = 0;
+    struct list_head *cur = descend ? head->prev : head->next;
+    struct list_head *safe;
+    char *cmp_str = NULL;
+    while (cur != head) {
+        safe = descend ? cur->prev : cur->next;
+        element_t *element = list_entry(cur, element_t, list);
+        if (cmp_str && strcmp(cmp_str, element->value) >= 0) {
+            list_del(cur);
+            q_release_element(element);
+        } else {
+            cmp_str = element->value;
+            ++cnt;
+        }
+        cur = safe;
+    }
+    return cnt;
 }
