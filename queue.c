@@ -15,12 +15,11 @@ static inline int q_de_a_scend(struct list_head *head, bool descend);
 /* Create an empty queue */
 struct list_head *q_new()
 {
-    struct list_head *temp = malloc(sizeof(struct list_head));
-    if (temp) {
-        temp->next = temp;
-        temp->prev = temp;
-    }
-    return temp;
+    struct list_head *q = malloc(sizeof(struct list_head));
+    if (!q)
+        return NULL;
+    q->next = q->prev = q;
+    return q;
 }
 
 /* Free all storage used by queue */
@@ -28,9 +27,10 @@ void q_free(struct list_head *head)
 {
     if (!head)
         return;
-    element_t *entry, *safe;
-    list_for_each_entry_safe (entry, safe, head, list) {
-        q_release_element(entry);
+    element_t *entry, *node;
+    list_for_each_entry_safe (entry, node, head, list) {
+        free(entry->value);
+        free(entry);
     }
     free(head);
 }
@@ -38,38 +38,34 @@ void q_free(struct list_head *head)
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
-    if (!head) {
+    if (!head || !(s))
+        return false;
+    element_t *new_element = malloc(sizeof(element_t));
+    if (!new_element)
+        return false;
+    new_element->value = strdup(s);
+    if (!(new_element->value)) {
+        free(new_element);
         return false;
     }
-    element_t *temp = malloc(sizeof(element_t));
-    if (!temp) {
-        return false;
-    }
-    temp->value = strdup(s);
-    if (!temp->value) {
-        free(temp);
-        return false;
-    }
-    list_add(&temp->list, head);
+    list_add(&new_element->list, head);
     return true;
 }
 
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
-    if (!head) {
+    if (!head || !(s))
+        return false;
+    element_t *new_element = malloc(sizeof(element_t));
+    if (!new_element)
+        return false;
+    new_element->value = strdup(s);
+    if (!(new_element->value)) {
+        free(new_element);
         return false;
     }
-    element_t *temp = malloc(sizeof(element_t));
-    if (!temp) {
-        return false;
-    }
-    temp->value = strdup(s);
-    if (!temp->value) {
-        free(temp);
-        return false;
-    }
-    list_add_tail(&temp->list, head);
+    list_add_tail(&new_element->list, head);
     return true;
 }
 
@@ -78,14 +74,18 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
     if (!head || list_empty(head))
         return NULL;
-    struct list_head *rm_node = head->next;
-    list_del(rm_node);
-    element_t *rm_ele = list_entry(rm_node, element_t, list);
-    if (!sp || !(rm_ele->value))
+    struct list_head *rm_list_head = head->next;
+    struct list_head *dummy_prev = rm_list_head->prev;
+    struct list_head *dummy_next = rm_list_head->next;
+    dummy_prev->next = dummy_next;
+    dummy_next->prev = dummy_prev;
+
+    element_t *rm_element = list_entry(rm_list_head, element_t, list);
+    if (!sp || !(rm_element->value))
         return NULL;
-    strncpy(sp, rm_ele->value, bufsize);
+    strncpy(sp, rm_element->value, bufsize);
     sp[bufsize - 1] = '\0';
-    return rm_ele;
+    return rm_element;
 }
 
 /* Remove an element from tail of queue */
@@ -93,42 +93,50 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
     if (!head || list_empty(head))
         return NULL;
-    struct list_head *rm_node = head->prev;
-    list_del(rm_node);
-    element_t *rm_ele = list_entry(rm_node, element_t, list);
-    if (!sp || !(rm_ele->value))
+    struct list_head *rm_list_head = head->prev;
+    struct list_head *dummy_prev = rm_list_head->prev;
+    struct list_head *dummy_next = rm_list_head->next;
+    dummy_prev->next = dummy_next;
+    dummy_next->prev = dummy_prev;
+
+    element_t *rm_element = list_entry(rm_list_head, element_t, list);
+    if (!sp || !(rm_element->value))
         return NULL;
-    strncpy(sp, rm_ele->value, bufsize);
+    strncpy(sp, rm_element->value, bufsize);
     sp[bufsize - 1] = '\0';
-    return rm_ele;
+    return rm_element;
 }
 
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
     if (!head)
-        return 0;
-
-    int len = 0;
-    struct list_head *li;
-
-    list_for_each (li, head)
-        len++;
-    return len;
+        return -1;
+    element_t *entry, *node;
+    int count = 0;
+    list_for_each_entry_safe (entry, node, head, list) {
+        count++;
+    }
+    return count;
 }
 
 /* Delete the middle node in queue */
 bool q_delete_mid(struct list_head *head)
 {
-    if (head == NULL || list_empty(head))
+    if (!head)
         return false;
-    int count = q_size(head) / 2;
-    struct list_head *temp = head->next;
-    while (count--) {
-        temp = temp->next;
+    element_t *entry, *node;
+    int count = 0;
+    list_for_each_entry_safe (entry, node, head, list) {
+        count++;
     }
-    list_del(temp);
-    q_release_element(list_entry(temp, element_t, list));
+    count = count / 2;
+    struct list_head *rm_list_head = head->next;
+    while (count--) {
+        rm_list_head = rm_list_head->next;
+    }
+    list_del(rm_list_head);
+    q_release_element(list_entry(rm_list_head, element_t, list));
     return true;
 }
 
@@ -218,13 +226,22 @@ void q_swap(struct list_head *head)
     if (!head || list_empty(head))
         return;
     int count = 0;
-    struct list_head *node, *prev = head;
-    list_for_each (node, head) {
+    struct list_head *node, *prev_node, *dummy_prev, *dummy_next;
+    for (node = (head)->next; node != (head); node = node->next) {
         count++;
         if (count % 2 == 0) {
-            list_move(node, prev);
-            node = node->next;
-            prev = node;
+            prev_node = node->prev;
+            //
+            dummy_prev = prev_node->prev;
+            dummy_next = node->next;
+            dummy_prev->next = node;
+            dummy_next->prev = prev_node;
+            //
+            node->prev = dummy_prev;
+            node->next = prev_node;
+            //
+            prev_node->prev = node;
+            prev_node->next = dummy_next;
         }
     }
 }
