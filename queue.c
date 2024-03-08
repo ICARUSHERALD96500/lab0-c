@@ -344,14 +344,23 @@ int q_descend(struct list_head *head)
     // }
     // return q_size(head);
     return q_de_a_scend(head, true);
-
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
  * order */
 int q_merge(struct list_head *head, bool descend)
 {
-    return 0;
+    if (!head || list_empty(head))
+        return 0;
+    queue_contex_t *temp = list_entry(head->next, queue_contex_t, chain);
+    struct list_head *ptr = head->next->next;
+    while (ptr != head) {
+        queue_contex_t *temp2 = list_entry(ptr, queue_contex_t, chain);
+        list_splice_init(temp2->q, temp->q);
+        ptr = ptr->next;
+    }
+    q_sort(temp->q, descend);
+    return q_size(temp->q);
 }
 static inline int q_de_a_scend(struct list_head *head, bool descend)
 {
