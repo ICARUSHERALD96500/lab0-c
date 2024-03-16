@@ -99,6 +99,40 @@ static void prepare_percentiles(int64_t *exec_times, int64_t *percentiles)
 static void update_statistics(const int64_t *exec_times,
                               uint8_t *classes,
                               int64_t *percentiles)
+
+    static int cmp(const int64_t *a, const int64_t *b)
+{
+    return (int) (*a - *b);
+}
+
+static int64_t percentile(int64_t *a_sorted, double which, size_t size)
+{
+    size_t array_position = (size_t) ((double) size * (double) which);
+    assert(array_position < size);
+    return a_sorted[array_position];
+}
+
+/*
+ set different thresholds for cropping measurements.
+ the exponential tendency is meant to approximately match
+ the measurements distribution, but there's not more science
+ than that.
+*/
+static void prepare_percentiles(int64_t *exec_times, int64_t *percentiles)
+{
+    qsort(exec_times, N_MEASURES, sizeof(int64_t),
+          (int (*)(const void *, const void *)) cmp);
+    for (size_t i = 0; i < NUMBER_PERCENTILES; i++) {
+        percentiles[i] = percentile(
+            exec_times,
+            1 - (pow(0.5, 10 * (double) (i + 1) / NUMBER_PERCENTILES)),
+            N_MEASURES);
+    }
+}
+
+static void update_statistics(const int64_t *exec_times,
+                              uint8_t *classes,
+                              int64_t *percentiles)
 {
     for (size_t i = DROP_SIZE; i < (N_MEASURES - DROP_SIZE); i++) {
         int64_t difference = exec_times[i];
@@ -182,6 +216,8 @@ static bool doit(int mode)
     uint8_t *classes = calloc(N_MEASURES, sizeof(uint8_t));
     uint8_t *input_data = calloc(N_MEASURES * CHUNK_SIZE, sizeof(uint8_t));
     int64_t *percentiles = calloc(NUMBER_PERCENTILES, sizeof(int64_t));
+    int64_t *percentiles = calloc(NUMBER_PERCENTILES, sizeof(int64_t));
+
     if (!before_ticks || !after_ticks || !exec_times || !classes ||
         !input_data) {
         die();
