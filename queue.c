@@ -18,7 +18,7 @@ struct list_head *q_new()
     struct list_head *q = malloc(sizeof(struct list_head));
     if (!q)
         return NULL;
-    q->next = q->prev = q;
+    INIT_LIST_HEAD(q);
     return q;
 }
 
@@ -43,6 +43,7 @@ bool q_insert_head(struct list_head *head, char *s)
     element_t *new_element = malloc(sizeof(element_t));
     if (!new_element)
         return false;
+    INIT_LIST_HEAD(&new_element->list);
     new_element->value = strdup(s);
     if (!(new_element->value)) {
         free(new_element);
@@ -60,6 +61,7 @@ bool q_insert_tail(struct list_head *head, char *s)
     element_t *new_element = malloc(sizeof(element_t));
     if (!new_element)
         return false;
+    INIT_LIST_HEAD(&new_element->list);
     new_element->value = strdup(s);
     if (!(new_element->value)) {
         free(new_element);
@@ -74,18 +76,16 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
     if (!head || list_empty(head))
         return NULL;
-    struct list_head *rm_list_head = head->next;
-    struct list_head *dummy_prev = rm_list_head->prev;
-    struct list_head *dummy_next = rm_list_head->next;
-    dummy_prev->next = dummy_next;
-    dummy_next->prev = dummy_prev;
+    element_t *f = list_first_entry(head, element_t, list);
+    list_del(&f->list);
 
-    element_t *rm_element = list_entry(rm_list_head, element_t, list);
-    if (!sp || !(rm_element->value))
-        return NULL;
-    strncpy(sp, rm_element->value, bufsize);
-    sp[bufsize - 1] = '\0';
-    return rm_element;
+    if (sp) {
+        size_t copy_size =
+            strlen(f->value) < (bufsize - 1) ? strlen(f->value) : (bufsize - 1);
+        strncpy(sp, f->value, copy_size);
+        sp[copy_size] = '\0';
+    }
+    return f;
 }
 
 /* Remove an element from tail of queue */
@@ -93,18 +93,16 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
     if (!head || list_empty(head))
         return NULL;
-    struct list_head *rm_list_head = head->prev;
-    struct list_head *dummy_prev = rm_list_head->prev;
-    struct list_head *dummy_next = rm_list_head->next;
-    dummy_prev->next = dummy_next;
-    dummy_next->prev = dummy_prev;
+    element_t *f = list_last_entry(head, element_t, list);
+    list_del(&f->list);
 
-    element_t *rm_element = list_entry(rm_list_head, element_t, list);
-    if (!sp || !(rm_element->value))
-        return NULL;
-    strncpy(sp, rm_element->value, bufsize);
-    sp[bufsize - 1] = '\0';
-    return rm_element;
+    if (sp) {
+        size_t copy_size =
+            strlen(f->value) < (bufsize - 1) ? strlen(f->value) : (bufsize - 1);
+        strncpy(sp, f->value, copy_size);
+        sp[copy_size] = '\0';
+    }
+    return f;
 }
 
 /* Return number of elements in queue */
