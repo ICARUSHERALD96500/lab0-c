@@ -385,3 +385,8 @@ static inline int q_de_a_scend(struct list_head *head, bool descend)
     }
     return cnt;
 }
+
+bool do_hello(int argc, char *argv[])
+{
+    return (bool) printf("Hello, World\n");
+}
